@@ -1,5 +1,5 @@
 import threading
-from flask import Flask, send_from_directory
+from flask import Flask, send_from_directory, request
 from flask_socketio import SocketIO
 import os
 
@@ -46,12 +46,52 @@ def run_socketio_server():
     @socketio.on('disconnect')
     def handle_disconnect():
         print('Client disconnected')
+
+    @socketio.on('android_connect')
+    def android_device_connected():
+        print('Android device connected')
+        socketio.emit('update_text', {'data': f'Android device connected: {request.sid}'})
+
+    @socketio.on('song_change')
+    def handle_song_change(data):
+        print(f'Song changed to: {data}')
+        socketio.emit('update_text', {'data': f'song playing now: {data}'})
+
+    @socketio.on('album_image')
+    def handle_album_image(data):
+        print('Received album image data')
+        socketio.emit('album_image_bitmap', data)
+    
+    @socketio.on('skip_song')
+    def handle_skip_song():
+        print('Skip song requested from Android')
+        socketio.emit('phone_skip_song')
+    
+    @socketio.on('web_connect')
+    def web_app_connected():
+        print('Web app connected')
     
     @socketio.on('message')
     def handle_test_event(data):
         print(f'Received test_event: {data}')
         socketio.emit('update_text', {'data': 'Server received your message!'})
-
+    
+    # add events from phone such ass 
+    # ... new_map_tile
+    # ... 
+    
+    # add events from web app such as 
+    # ... skip song
+    # ... query song
+    # ... pause song
+    # ... resume song
+    # ...
+    
+    # send events to android such as
+    # ... skip song
+    # ... other messages relayed from web app to backend to android
+    
+    
     print("Socket.IO server running on port 5000")
     socketio.run(app, host='0.0.0.0', port=5000, allow_unsafe_werkzeug=True)
 
