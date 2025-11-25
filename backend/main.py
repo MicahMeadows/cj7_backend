@@ -3,6 +3,8 @@ from flask import Flask, send_from_directory, request
 from flask_socketio import SocketIO
 import os
 
+SOCKET_IO_PORT = 8089
+
 # === Flask app for React static files ===
 def create_flask_app():
     app = Flask(__name__, static_folder='./dist', static_url_path='')
@@ -37,6 +39,9 @@ def run_socketio_server():
     app = create_flask_app()
     socketio = SocketIO(app, cors_allowed_origins="*")  # Allow CORS for all origins
 
+    tile_cache = {}
+    pending_tile_requests = set()
+
     # Example Socket.IO event
     @socketio.on('connect')
     def handle_connect():
@@ -65,7 +70,7 @@ def run_socketio_server():
     @socketio.on('skip_song')
     def handle_skip_song():
         print('Skip song requested from Android')
-        socketio.emit('phone_skip_song')
+        socketio.emit('skip_song')
     
     @socketio.on('web_connect')
     def web_app_connected():
@@ -76,24 +81,59 @@ def run_socketio_server():
         print(f'Received test_event: {data}')
         socketio.emit('update_text', {'data': 'Server received your message!'})
     
-    # add events from phone such ass 
-    # ... new_map_tile
-    # ... 
+    @socketio.on('tile_data')
+    def handle_tile_data(data):
+        x = data['x']
+        y = data['y']
+        zoom = data['zoom']
+        tile_key = (x, y, zoom)
+
+        print(f"Received tile {tile_key}, caching it")
+        tile_cache[tile_key] = data
+
+        # Remove from pending set
+        pending_tile_requests.discard(tile_key)
+
+        socketio.emit('web_map_tile', data)
     
-    # add events from web app such as 
-    # ... skip song
-    # ... query song
-    # ... pause song
-    # ... resume song
-    # ...
+    @socketio.on('location_update')
+    def handle_location_update(data):
+        lat = data['lat']
+        lon = data['long']
+        print(f"Received location update: lat={lat}, lon={lon}")
+        socketio.emit('web_location_update', data)
     
-    # send events to android such as
-    # ... skip song
-    # ... other messages relayed from web app to backend to android
+    @socketio.on('request_tile')
+    def handle_request_tiles(data):
+        x = data.get('x')
+        y = data.get('y')
+        zoom = data.get('zoom')
+
+        if x is None or y is None or zoom is None:
+            print('Invalid tile request data')
+            return
+
+        tile_key = (x, y, zoom)
+        print(f'Received request for tile {tile_key}')
+
+        # If tile is in cache, just return it
+        if tile_key in tile_cache:
+            print(f"Returning tile {tile_key} from cache")
+            socketio.emit('web_map_tile', tile_cache[tile_key])
+            return
+
+        # If tile is already being requested, ignore
+        if tile_key in pending_tile_requests:
+            print(f"Tile {tile_key} is already requested, skipping duplicate request")
+            return
+
+        # Otherwise, request tile and mark as pending
+        print(f"Requesting tile {tile_key} from Android")
+        pending_tile_requests.add(tile_key)
+        socketio.emit('android_request_tile', {'x': x, 'y': y, 'zoom': zoom})
     
-    
-    print("Socket.IO server running on port 5000")
-    socketio.run(app, host='0.0.0.0', port=5000, allow_unsafe_werkzeug=True)
+    print(f"Socket.IO server running on port {SOCKET_IO_PORT}")
+    socketio.run(app, host='0.0.0.0', port=SOCKET_IO_PORT, allow_unsafe_werkzeug=True)
 
 # === Backend manager to run both ===
 class BackendManager:
