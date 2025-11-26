@@ -2,7 +2,7 @@ import React, { useRef, useEffect, useState } from 'react';
 import MapUtils from './coordinate_helpers';
 import Constants from './const';
 
-const MapCanvas = ({ focusLat, focusLong, zoom, tileList, onCenterChange }) => {
+const MapCanvas = ({ focusLat, focusLong, zoom, tileList, angle = 0, onCenterChange }) => {
   const canvasRef = useRef(null);
   const [offset, setOffset] = useState({ x: 0, y: 0 }); // drag offset
   const [dragStart, setDragStart] = useState(null);
@@ -20,43 +20,111 @@ const MapCanvas = ({ focusLat, focusLong, zoom, tileList, onCenterChange }) => {
   }, []); // empty deps → runs once on mount
 
 
-  // Draw function
-  const TILE_ZOOM = 1;
-
   const draw = () => {
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
     ctx.clearRect(0, 0, canvasSize, canvasSize);
-
+  
+    // Translate to canvas center
+    ctx.save(); // save state
+    ctx.translate(canvasCenter, canvasCenter);
+    ctx.rotate((angle * Math.PI) / 180); // rotate around center
+  
     const centerPixel = MapUtils.fromLatLngToPoint(focusLat, focusLong, zoom);
-
+  
+    // Draw tiles
     tileCache.current.forEach((img, key) => {
       const [tileX, tileY] = key.split('_').map(Number);
       const { lat, lng } = MapUtils.fromTileCoordToLatLng(tileX, tileY, zoom);
       const tilePixel = MapUtils.fromLatLngToPoint(lat, lng, zoom);
 
-      const dx = canvasCenter + (tilePixel.x - centerPixel.x) * TILE_ZOOM + offset.x;
-      const dy = canvasCenter + (tilePixel.y - centerPixel.y) * TILE_ZOOM + offset.y;
+      const dx = (tilePixel.x - centerPixel.x) * Constants.TILE_ZOOM + offset.x;
+      const dy = (tilePixel.y - centerPixel.y) * Constants.TILE_ZOOM + offset.y;
 
-      if (dx + Constants.TILE_SIZE * TILE_ZOOM > 0 && dx < canvasSize && dy + Constants.TILE_SIZE * TILE_ZOOM > 0 && dy < canvasSize) {
-        ctx.drawImage(img, dx, dy, Constants.TILE_SIZE * TILE_ZOOM, Constants.TILE_SIZE * TILE_ZOOM);
-      }
+      // Remove half-tile subtraction
+      ctx.drawImage(img, dx, dy, Constants.TILE_SIZE*Constants.TILE_ZOOM, Constants.TILE_SIZE*Constants.TILE_ZOOM);
+
+      // const dx = (tilePixel.x - centerPixel.x) * Constants.TILE_ZOOM + offset.x;
+      // const dy = (tilePixel.y - centerPixel.y) * Constants.TILE_ZOOM + offset.y;
+    
+      // // Draw all tiles in a loose area around center (instead of strict axis-aligned check)
+      // if (
+      //   Math.abs(dx) < canvasSize / 2 + Constants.TILE_SIZE * Constants.TILE_ZOOM &&
+      //   Math.abs(dy) < canvasSize / 2 + Constants.TILE_SIZE * Constants.TILE_ZOOM
+      // ) {
+      //   ctx.drawImage(
+      //     img,
+      //     dx - Constants.TILE_SIZE * Constants.TILE_ZOOM / 2,
+      //     dy - Constants.TILE_SIZE * Constants.TILE_ZOOM / 2,
+      //     Constants.TILE_SIZE * Constants.TILE_ZOOM,
+      //     Constants.TILE_SIZE * Constants.TILE_ZOOM
+      //   );
+      // }
     });
+    
+  
+    // Draw red dot at center (player location)
+    ctx.save();
 
-    // Red dot
-    const dotPixel = MapUtils.fromLatLngToPoint(focusLat, focusLong, zoom);
-    const dotCanvasX = canvasCenter + (dotPixel.x - centerPixel.x) * TILE_ZOOM + offset.x;
-    const dotCanvasY = canvasCenter + (dotPixel.y - centerPixel.y) * TILE_ZOOM + offset.y;
+    // Compute rotated offset for drawing the player dot
+    const rad = (angle * Math.PI) / 180;
+    const rotatedOffsetX = offset.x * Math.cos(rad) + offset.y * Math.sin(rad);
+    const rotatedOffsetY = -offset.x * Math.sin(rad) + offset.y * Math.cos(rad);
 
     ctx.fillStyle = 'black';
     ctx.strokeStyle = '#41ff00';
     ctx.lineWidth = 3;
     ctx.beginPath();
-    ctx.arc(dotCanvasX, dotCanvasY, 9 * TILE_ZOOM, 0, 2 * Math.PI);
+    ctx.arc(offset.x, offset.y, 9 * Constants.TILE_ZOOM, 0, 2*Math.PI);
     ctx.fill();
     ctx.stroke();
+    
+
+    ctx.restore();
+
+    if (Constants.RENDER_DEBUG_CANVAS) {
+      const thresholdPx = Constants.TILE_QUERY_THRESHOLD;
+      const radius = thresholdPx * Constants.TILE_ZOOM;
+    
+      // Save state in case the canvas is rotated
+      ctx.save();
+    
+      // Draw threshold circle at canvas center (0,0 after translate)
+      ctx.beginPath();
+      ctx.strokeStyle = "rgba(0, 150, 255, 0.6)";
+      ctx.lineWidth = 2;
+      ctx.arc(0, 0, radius, 0, 2 * Math.PI); // full circle
+      ctx.stroke();
+    
+      ctx.restore();
+    }
+
+  
+    // if (Constants.RENDER_DEBUG_CANVAS) {
+    //   const thresholdPx = Constants.TILE_QUERY_THRESHOLD;
+    //   const halfSide = thresholdPx * Constants.TILE_ZOOM;
+    
+    //   // Save current rotated state
+    //   ctx.save();
+    
+    //   // Counter-rotate so box is axis-aligned
+    //   ctx.rotate((-angle * Math.PI) / 180);
+    
+    //   // Draw threshold box at canvas center (0,0 after translate)
+    //   ctx.beginPath();
+    //   ctx.strokeStyle = "rgba(0, 150, 255, 0.6)";
+    //   ctx.lineWidth = 2;
+    //   ctx.rect(-halfSide, -halfSide, halfSide * 2, halfSide * 2);
+    //   ctx.stroke();
+    
+    //   ctx.restore(); // go back to rotated state for other drawings
+    // }
+    
+  
+    ctx.restore(); // restore original canvas state
   };
+  
 
 
   // --- Convert current offset to center lat/lng ---
@@ -65,32 +133,46 @@ const MapCanvas = ({ focusLat, focusLong, zoom, tileList, onCenterChange }) => {
   
     // Scale offset by TILE_ZOOM so center aligns with visual
     const newCenterPixel = {
-      x: centerPixel.x - newOffset.x / TILE_ZOOM,
-      y: centerPixel.y - newOffset.y / TILE_ZOOM,
+      x: centerPixel.x - newOffset.x / Constants.TILE_ZOOM,
+      y: centerPixel.y - newOffset.y / Constants.TILE_ZOOM,
     };
   
     const { lat, lng } = MapUtils.fromPointToLatLng(newCenterPixel.x, newCenterPixel.y, zoom);
-  
+
     if (onCenterChange) {
-      if (debounceRef.current) clearTimeout(debounceRef.current);
-  
-      debounceRef.current = setTimeout(() => {
-        onCenterChange([lat, lng]);
-      }, 300);
+      onCenterChange([lat, lng]);
     }
   };
   
 
   // Drag handlers
-  const handleMouseDown = (e) =>
-    setDragStart({ x: e.clientX - offset.x, y: e.clientY - offset.y });
+  // const handleMouseDown = (e) => setDragStart({ x: e.clientX - offset.x, y: e.clientY - offset.y });
+  const handleMouseDown = (e) => setDragStart({ x: e.clientX, y: e.clientY });
 
   const handleMouseMove = (e) => {
     if (!dragStart) return;
-    const newOffset = { x: e.clientX - dragStart.x, y: e.clientY - dragStart.y };
+  
+    const dx = e.clientX - dragStart.x;
+    const dy = e.clientY - dragStart.y;
+  
+    const rad = (angle * Math.PI) / 180;
+  
+    // Rotate delta relative to map rotation
+    const rotatedDx = dx * Math.cos(rad) + dy * Math.sin(rad);
+    const rotatedDy = -dx * Math.sin(rad) + dy * Math.cos(rad);
+  
+    const newOffset = {
+      x: offset.x + rotatedDx,
+      y: offset.y + rotatedDy,
+    };
+  
     setOffset(newOffset);
-    updateCenter(newOffset); // fire callback
+    updateCenter(newOffset);
+  
+    setDragStart({ x: e.clientX, y: e.clientY }); // update drag start
   };
+  
+  
 
   const handleMouseUp = () => setDragStart(null);
 
