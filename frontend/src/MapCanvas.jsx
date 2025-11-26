@@ -99,28 +99,6 @@ const MapCanvas = ({ focusLat, focusLong, zoom, tileList, angle = 0, onCenterCha
     
       ctx.restore();
     }
-
-  
-    // if (Constants.RENDER_DEBUG_CANVAS) {
-    //   const thresholdPx = Constants.TILE_QUERY_THRESHOLD;
-    //   const halfSide = thresholdPx * Constants.TILE_ZOOM;
-    
-    //   // Save current rotated state
-    //   ctx.save();
-    
-    //   // Counter-rotate so box is axis-aligned
-    //   ctx.rotate((-angle * Math.PI) / 180);
-    
-    //   // Draw threshold box at canvas center (0,0 after translate)
-    //   ctx.beginPath();
-    //   ctx.strokeStyle = "rgba(0, 150, 255, 0.6)";
-    //   ctx.lineWidth = 2;
-    //   ctx.rect(-halfSide, -halfSide, halfSide * 2, halfSide * 2);
-    //   ctx.stroke();
-    
-    //   ctx.restore(); // go back to rotated state for other drawings
-    // }
-    
   
     ctx.restore(); // restore original canvas state
   };
