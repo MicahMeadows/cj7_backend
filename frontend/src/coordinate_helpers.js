@@ -1,4 +1,4 @@
-const TILE_SIZE = 256;
+import Constants from "./const";
 const PI = Math.PI;
 
 export default class MapUtils {
@@ -8,7 +8,7 @@ export default class MapUtils {
     // Clamp to prevent infinity at poles
     const clampedSiny = Math.min(Math.max(siny, -0.9999), 0.9999);
 
-    const scale = TILE_SIZE * 2 ** zoom;
+    const scale = Constants.TILE_SIZE * 2 ** zoom;
 
     const x = ((lng + 180) / 360) * scale;
     const y = ((0.5 - Math.log((1 + clampedSiny) / (1 - clampedSiny)) / (4 * PI)) * scale);
@@ -16,11 +16,22 @@ export default class MapUtils {
     return { x, y };
   }
 
+  static fromPointToLatLng(x, y, zoom) {
+    const scale = Constants.TILE_SIZE * 2 ** zoom;
+
+    const lng = (x / scale) * 360 - 180;
+
+    const n = Math.PI - 2 * Math.PI * (y / scale);
+    const lat = (180 / Math.PI) * Math.atan(0.5 * (Math.exp(n) - Math.exp(-n)));
+
+    return { lat, lng };
+  }
+
   // Convert latitude/longitude to tile coordinates at a given zoom
   static fromLatLngToTileCoord(lat, lng, zoom) {
     const point = MapUtils.fromLatLngToPoint(lat, lng, zoom);
-    const x = Math.floor(point.x / TILE_SIZE);
-    const y = Math.floor(point.y / TILE_SIZE);
+    const x = Math.floor(point.x / Constants.TILE_SIZE);
+    const y = Math.floor(point.y / Constants.TILE_SIZE);
     return { x, y, z: zoom };
   }
 

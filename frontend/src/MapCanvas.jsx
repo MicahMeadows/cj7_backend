@@ -1,18 +1,100 @@
 import React, { useRef, useEffect, useState } from 'react';
 import MapUtils from './coordinate_helpers';
+import Constants from './const';
 
-const TILE_SIZE = 256;
-
-const MapCanvas = ({ focusLat, focusLong, zoom, tileList }) => {
+const MapCanvas = ({ focusLat, focusLong, zoom, tileList, onCenterChange }) => {
   const canvasRef = useRef(null);
   const [offset, setOffset] = useState({ x: 0, y: 0 }); // drag offset
   const [dragStart, setDragStart] = useState(null);
   const tileCache = useRef(new Map());
+  const debounceRef = useRef(null);
 
   const canvasSize = 600;
   const canvasCenter = canvasSize / 2;
 
-  // Load tiles into cache
+  useEffect(() => {
+    if (onCenterChange) {
+      // fire immediately with default center
+      onCenterChange([focusLat, focusLong]);
+    }
+  }, []); // empty deps → runs once on mount
+
+
+  // Draw function
+  const TILE_ZOOM = 1;
+
+  const draw = () => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    ctx.clearRect(0, 0, canvasSize, canvasSize);
+
+    const centerPixel = MapUtils.fromLatLngToPoint(focusLat, focusLong, zoom);
+
+    tileCache.current.forEach((img, key) => {
+      const [tileX, tileY] = key.split('_').map(Number);
+      const { lat, lng } = MapUtils.fromTileCoordToLatLng(tileX, tileY, zoom);
+      const tilePixel = MapUtils.fromLatLngToPoint(lat, lng, zoom);
+
+      const dx = canvasCenter + (tilePixel.x - centerPixel.x) * TILE_ZOOM + offset.x;
+      const dy = canvasCenter + (tilePixel.y - centerPixel.y) * TILE_ZOOM + offset.y;
+
+      if (dx + Constants.TILE_SIZE * TILE_ZOOM > 0 && dx < canvasSize && dy + Constants.TILE_SIZE * TILE_ZOOM > 0 && dy < canvasSize) {
+        ctx.drawImage(img, dx, dy, Constants.TILE_SIZE * TILE_ZOOM, Constants.TILE_SIZE * TILE_ZOOM);
+      }
+    });
+
+    // Red dot
+    const dotPixel = MapUtils.fromLatLngToPoint(focusLat, focusLong, zoom);
+    const dotCanvasX = canvasCenter + (dotPixel.x - centerPixel.x) * TILE_ZOOM + offset.x;
+    const dotCanvasY = canvasCenter + (dotPixel.y - centerPixel.y) * TILE_ZOOM + offset.y;
+
+    ctx.fillStyle = 'black';
+    ctx.strokeStyle = '#41ff00';
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.arc(dotCanvasX, dotCanvasY, 9 * TILE_ZOOM, 0, 2 * Math.PI);
+    ctx.fill();
+    ctx.stroke();
+  };
+
+
+  // --- Convert current offset to center lat/lng ---
+  const updateCenter = (newOffset) => {
+    const centerPixel = MapUtils.fromLatLngToPoint(focusLat, focusLong, zoom);
+  
+    // Scale offset by TILE_ZOOM so center aligns with visual
+    const newCenterPixel = {
+      x: centerPixel.x - newOffset.x / TILE_ZOOM,
+      y: centerPixel.y - newOffset.y / TILE_ZOOM,
+    };
+  
+    const { lat, lng } = MapUtils.fromPointToLatLng(newCenterPixel.x, newCenterPixel.y, zoom);
+  
+    if (onCenterChange) {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+  
+      debounceRef.current = setTimeout(() => {
+        onCenterChange([lat, lng]);
+      }, 300);
+    }
+  };
+  
+
+  // Drag handlers
+  const handleMouseDown = (e) =>
+    setDragStart({ x: e.clientX - offset.x, y: e.clientY - offset.y });
+
+  const handleMouseMove = (e) => {
+    if (!dragStart) return;
+    const newOffset = { x: e.clientX - dragStart.x, y: e.clientY - dragStart.y };
+    setOffset(newOffset);
+    updateCenter(newOffset); // fire callback
+  };
+
+  const handleMouseUp = () => setDragStart(null);
+
+  // Cache tiles
   useEffect(() => {
     tileList.forEach((tile) => {
       const key = `${tile.x}_${tile.y}`;
@@ -25,63 +107,6 @@ const MapCanvas = ({ focusLat, focusLong, zoom, tileList }) => {
     });
     draw();
   }, [tileList, offset]);
-
-  const draw = () => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    ctx.clearRect(0, 0, canvasSize, canvasSize);
-  
-    // Focus point in world pixels
-    const centerPixel = MapUtils.fromLatLngToPoint(focusLat, focusLong, zoom);
-  
-    // Draw all tiles
-    tileCache.current.forEach((img, key) => {
-      const [tileX, tileY] = key.split('_').map(Number);
-  
-      // Tile index → top-left lat/lng
-      const { lat, lng } = MapUtils.fromTileCoordToLatLng(tileX, tileY, zoom);
-  
-      // Tile lat/lng → world pixels
-      const tilePixel = MapUtils.fromLatLngToPoint(lat, lng, zoom);
-  
-      // Tile canvas coordinates relative to center + drag offset
-      const dx = canvasCenter + (tilePixel.x - centerPixel.x) + offset.x;
-      const dy = canvasCenter + (tilePixel.y - centerPixel.y) + offset.y;
-  
-      // Draw only if visible
-      if (dx + TILE_SIZE > 0 && dx < canvasSize && dy + TILE_SIZE > 0 && dy < canvasSize) {
-        ctx.drawImage(img, dx, dy, TILE_SIZE, TILE_SIZE);
-      }
-    });
-  
-    // --- Draw red dot at its map location, not fixed center ---
-    // Convert focusLat/focusLong to world pixels
-    const dotPixel = MapUtils.fromLatLngToPoint(focusLat, focusLong, zoom);
-    // Translate to canvas coordinates relative to center + offset
-    const dotCanvasX = canvasCenter + (dotPixel.x - centerPixel.x) + offset.x;
-    const dotCanvasY = canvasCenter + (dotPixel.y - centerPixel.y) + offset.y;
-  
-    ctx.fillStyle = 'black';       // fill color
-    ctx.strokeStyle = '#41ff00';   // outline color
-    ctx.lineWidth = 3;             // outline thickness
-    ctx.beginPath();
-    ctx.arc(dotCanvasX, dotCanvasY, 15, 0, 2 * Math.PI);
-    ctx.fill();    // fill first
-    ctx.stroke();  // then outline
-    
-  };
-  
-  
-
-  // Drag handlers
-  const handleMouseDown = (e) =>
-    setDragStart({ x: e.clientX - offset.x, y: e.clientY - offset.y });
-  const handleMouseMove = (e) => {
-    if (!dragStart) return;
-    setOffset({ x: e.clientX - dragStart.x, y: e.clientY - dragStart.y });
-  };
-  const handleMouseUp = () => setDragStart(null);
 
   return (
     <canvas
@@ -96,5 +121,6 @@ const MapCanvas = ({ focusLat, focusLong, zoom, tileList }) => {
     />
   );
 };
+
 
 export default MapCanvas;
