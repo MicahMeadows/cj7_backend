@@ -14,10 +14,9 @@ const MapCanvas = ({ focusLat, focusLong, zoom, tileList, angle = 0, onCenterCha
 
   useEffect(() => {
     if (onCenterChange) {
-      // fire immediately with default center
       onCenterChange([focusLat, focusLong]);
     }
-  }, []); // empty deps → runs once on mount
+  }, []);
 
 
   const draw = () => {
@@ -42,25 +41,7 @@ const MapCanvas = ({ focusLat, focusLong, zoom, tileList, angle = 0, onCenterCha
       const dx = (tilePixel.x - centerPixel.x) * Constants.TILE_ZOOM + offset.x;
       const dy = (tilePixel.y - centerPixel.y) * Constants.TILE_ZOOM + offset.y;
 
-      // Remove half-tile subtraction
       ctx.drawImage(img, dx, dy, Constants.TILE_SIZE*Constants.TILE_ZOOM, Constants.TILE_SIZE*Constants.TILE_ZOOM);
-
-      // const dx = (tilePixel.x - centerPixel.x) * Constants.TILE_ZOOM + offset.x;
-      // const dy = (tilePixel.y - centerPixel.y) * Constants.TILE_ZOOM + offset.y;
-    
-      // // Draw all tiles in a loose area around center (instead of strict axis-aligned check)
-      // if (
-      //   Math.abs(dx) < canvasSize / 2 + Constants.TILE_SIZE * Constants.TILE_ZOOM &&
-      //   Math.abs(dy) < canvasSize / 2 + Constants.TILE_SIZE * Constants.TILE_ZOOM
-      // ) {
-      //   ctx.drawImage(
-      //     img,
-      //     dx - Constants.TILE_SIZE * Constants.TILE_ZOOM / 2,
-      //     dy - Constants.TILE_SIZE * Constants.TILE_ZOOM / 2,
-      //     Constants.TILE_SIZE * Constants.TILE_ZOOM,
-      //     Constants.TILE_SIZE * Constants.TILE_ZOOM
-      //   );
-      // }
     });
     
   
@@ -99,7 +80,7 @@ const MapCanvas = ({ focusLat, focusLong, zoom, tileList, angle = 0, onCenterCha
     
       ctx.restore();
     }
-  
+
     ctx.restore(); // restore original canvas state
   };
   
