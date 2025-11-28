@@ -57,6 +57,16 @@ def run_socketio_server():
         print('Android device connected')
         socketio.emit('update_text', {'data': f'Android device connected: {request.sid}'})
 
+    @socketio.on('time_and_distance')
+    def handle_time_and_distance(data):
+        print('Received time and distance data')
+        socketio.emit('web_time_and_distance', data)
+
+    @socketio.on('route_segments')
+    def handle_route_segments(data):
+        print('Received route segments data')
+        socketio.emit('web_route_segments', data)
+
     @socketio.on('song_change')
     def handle_song_change(data):
         print(f'Song changed to: {data}')
