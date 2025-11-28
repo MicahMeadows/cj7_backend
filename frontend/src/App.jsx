@@ -3,6 +3,7 @@ import io from 'socket.io-client';
 import './App.css';
 import GoogleMap from './GoogleMap';
 import GreenMonochromeFilter from './GreenMonochromeFilter';
+import Constants from './const';
 
 
 const API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY
@@ -23,10 +24,10 @@ function formatTimeLeft(seconds) {
 }
 
 function formatDistanceLeft(meters) {
-  if (!meters || meters < 0) return "0 miles";
+  if (!meters || meters < 0) return "0 mi";
 
   const miles = meters / 1609.34;
-  return `${miles.toFixed(1)} miles`;
+  return `${miles.toFixed(1)} mi`;
 }
 
 function App() {
@@ -34,12 +35,13 @@ function App() {
   const [imageData, setImageData] = useState(null);
   const [isConnected, setIsConnected] = useState(socket.connected);
   const [curLatLong, setLatLong] = useState([38.051524, -84.442025]);
-  const [dragCenterLatLong, setDragCenterLatLong] = useState(null);
   const mapRef = useRef(null);
   const [routeSegments, setRouteSegments] = useState([]);
   const [timeLeft, setTimeLeft] = useState(null);
   const [distanceLeft, setDistanceLeft] = useState(null);
   const [currentBearing, setCurrentBearing] = useState(0);
+  const [turnByTurn, setTurnByTurn] = useState(null);
+  const [currentSpeed, setCurrentSpeed] = useState(0);
 
   useEffect(() => {
     socket.on('connect', () => {
@@ -48,8 +50,14 @@ function App() {
       socket.emit('reload_page');
     });
 
+
     socket.on('disconnect', () => {
       setIsConnected(false);
+    });
+
+    socket.on('web_turn_by_turn', (data) => {
+      // console.log('Turn-by-turn update:', data);
+      setTurnByTurn(data)
     });
 
     socket.on('web_time_and_distance', (data) => {
@@ -72,11 +80,10 @@ function App() {
       const lat = data.lat;
       const lon = data.long;
       const bearing = data.bearing;
+      const mph = Math.max(Math.round(data.speed), 0);
       setLatLong([lat, lon]);
-      if (dragCenterLatLong === null) {
-        setDragCenterLatLong([lat, lon]);
         setCurrentBearing(bearing);
-      }
+        setCurrentSpeed(mph)
     });
 
     socket.on('album_image_bitmap', (data) => {
@@ -97,8 +104,21 @@ function App() {
           socket.emit('skip_song');
         }}
       >
-        <h2>Time Left: { formatTimeLeft(timeLeft) }s</h2>
-        <h2>Distance Left: { formatDistanceLeft(distanceLeft) }m</h2>
+        <h2>Speed: { currentSpeed }mph</h2>
+        <h2>Tot Time Left: { formatTimeLeft(timeLeft) }</h2>
+        <h2>Tot Distance Left: { formatDistanceLeft(distanceLeft) }</h2>
+        {
+          turnByTurn && (
+            <div>
+              <h2>road: { turnByTurn.road }</h2>
+              <h2>maneuver: { Constants.getManeuverName(turnByTurn.maneuver) }</h2>
+              <h2>meters: { turnByTurn.meters } meters</h2>
+              <h2>seconds: { turnByTurn.seconds } seconds</h2>
+              <h2>side: { turnByTurn.side }</h2>
+              <h2>step: { turnByTurn.step }</h2>
+            </div>
+          )
+        }
         <GreenMonochromeFilter
           initialBrightness={.9}
           initialContrast={1.1}

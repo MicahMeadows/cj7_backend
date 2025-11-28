@@ -72,6 +72,11 @@ def run_socketio_server():
         print('Received route segments data')
         socketio.emit('web_route_segments', data)
 
+    @socketio.on('turn_by_turn')
+    def handle_turn_by_turn(data):
+        print('Received turn by turn data')
+        socketio.emit('web_turn_by_turn', data)
+
     @socketio.on('song_change')
     def handle_song_change(data):
         print(f'Song changed to: {data}')

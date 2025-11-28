@@ -7,21 +7,37 @@ const GoogleMap = forwardRef(({ center, zoom, width, height, segments, bearing }
   const [scriptLoaded, setScriptLoaded] = useState(false);
   const [isUserDragging, setIsUserDragging] = useState(false);
   const polylinesRef = useRef([]);
+  const markerPositionRef = useRef(center);
 
-  
+  // Update marker and map center immediately when center changes
+  useEffect(() => {
+    if (!mapInstance.current || !mapInstance.current.userMarker) return;
+
+    const marker = mapInstance.current.userMarker;
+
+    // Update marker
+    markerPositionRef.current = center;
+    marker.setPosition(center);
+
+    // Update map center only if user isn't dragging
+    if (!isUserDragging) {
+      mapInstance.current.setCenter(center);
+      mapInstance.current.setZoom(zoom);
+    }
+  }, [center, zoom, isUserDragging]);
+
+  // Handle route segments
   useEffect(() => {
     if (!mapInstance.current || !segments) return;
-  
+
     segments.forEach((seg, i) => {
       if (!seg) return;
-  
+
       const path = seg.map(p => ({ lat: p.latitude, lng: p.longitude }));
-  
+
       if (polylinesRef.current[i]) {
-        // reuse existing polyline
         polylinesRef.current[i].setPath(path);
       } else {
-        // create new polyline
         const polyline = new google.maps.Polyline({
           path,
           map: mapInstance.current,
@@ -32,16 +48,14 @@ const GoogleMap = forwardRef(({ center, zoom, width, height, segments, bearing }
         polylinesRef.current[i] = polyline;
       }
     });
-  
-    // remove any extra polylines if segments shrank
+
     if (polylinesRef.current.length > segments.length) {
       polylinesRef.current.slice(segments.length).forEach(p => p.setMap(null));
       polylinesRef.current.length = segments.length;
     }
   }, [segments, scriptLoaded]);
-  
 
-  // Load Google Maps script once
+  // Load Google Maps script
   useEffect(() => {
     if (window.google && window.google.maps) {
       setScriptLoaded(true);
@@ -50,20 +64,16 @@ const GoogleMap = forwardRef(({ center, zoom, width, height, segments, bearing }
     const script = document.createElement("script");
     script.id = "google-maps-script";
     script.src = `https://maps.googleapis.com/maps/api/js?key=${import.meta.env.VITE_GOOGLE_MAPS_API_KEY}`;
-    // script.src = `https://maps.googleapis.com/maps/api/js?key=${import.meta.env.VITE_GOOGLE_MAPS_API_KEY}&v=beta&map_ids=${Constants.mapId}`;
-
     script.async = true;
     script.defer = true;
     script.onload = () => setScriptLoaded(true);
     document.head.appendChild(script);
   }, []);
 
+  // Rotate map to match bearing
   useEffect(() => {
     if (!mapInstance.current) return;
-  
-    // rotate map to match bearing
     if (bearing != null) {
-      console.log(`Setting map heading to ${bearing}`);
       mapInstance.current.setHeading(bearing);
     }
   }, [bearing]);
@@ -90,10 +100,11 @@ const GoogleMap = forwardRef(({ center, zoom, width, height, segments, bearing }
         gestureHandling: "greedy",
       });
 
-      mapInstance.current.setTilt(35)
+      mapInstance.current.setTilt(35);
 
       // Track dragging
       mapInstance.current.addListener("dragstart", () => setIsUserDragging(true));
+      mapInstance.current.addListener("dragend", () => setIsUserDragging(false));
 
       // Add marker
       mapInstance.current.userMarker = new google.maps.Marker({
@@ -102,30 +113,19 @@ const GoogleMap = forwardRef(({ center, zoom, width, height, segments, bearing }
         title: "My Location",
         icon: {
           path: google.maps.SymbolPath.CIRCLE,
-          fillColor: "#ffffff",       // black fill
+          fillColor: "#ffffff",
           fillOpacity: 1,
-          strokeColor: "#00ff00",     // green stroke
-          strokeWeight: 3,            // thickness of stroke
-          scale: 15                   // radius of circle in pixels
+          strokeColor: "#00ff00",
+          strokeWeight: 3,
+          scale: 15
         }
       });
-      
+
+      markerPositionRef.current = center;
     }
+  }, [scriptLoaded]);
 
-    // Update marker position
-    if (mapInstance.current.userMarker) {
-      mapInstance.current.userMarker.setPosition(center);
-    }
-
-    // Only update map center if user is not dragging
-    if (!isUserDragging) {
-      mapInstance.current.setCenter(center);
-      mapInstance.current.setZoom(zoom);
-    }
-
-  }, [scriptLoaded, center.lat, center.lng, zoom, isUserDragging]);
-
-  // Expose a method to reset center
+  // Expose recenter method
   useImperativeHandle(ref, () => ({
     recenter: () => {
       if (mapInstance.current) {
