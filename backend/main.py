@@ -52,6 +52,11 @@ def run_socketio_server():
     def handle_disconnect():
         print('Client disconnected')
 
+    @socketio.on('reload_page')
+    def handle_reload_page():
+        print('Reload page requested')
+        socketio.emit('android_reload_page', {})
+
     @socketio.on('android_connect')
     def android_device_connected():
         print('Android device connected')

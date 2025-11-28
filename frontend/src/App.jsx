@@ -44,7 +44,8 @@ function App() {
   useEffect(() => {
     socket.on('connect', () => {
       setIsConnected(true);
-      console.log(`requesting tiles...`);
+      console.log(`requsting page reload`);
+      socket.emit('reload_page');
     });
 
     socket.on('disconnect', () => {
