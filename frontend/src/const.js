@@ -1,4 +1,5 @@
 export default class Constants {
+    static MAP_ID = "90f87356969d889c"
     static ZOOM = 18
     static TILE_SIZE = 256;
     static TILE_QUERY_THRESHOLD = 600;

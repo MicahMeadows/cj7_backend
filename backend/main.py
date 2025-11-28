@@ -110,7 +110,7 @@ def run_socketio_server():
     def handle_location_update(data):
         lat = data['lat']
         lon = data['long']
-        print(f"Received location update: lat={lat}, lon={lon}")
+        print(f"Received location update: lat={lat}, lon={lon}, bearing={data.get('bearing')}")
         socketio.emit('web_location_update', data)
     
     @socketio.on('request_tile')

@@ -1,38 +1,14 @@
-import { useEffect, useRef, useState, useImperativeHandle, forwardRef, segments } from "react";
+import { useEffect, useRef, useState, useImperativeHandle, forwardRef } from "react";
 import Constants from "./const";
 
-const GoogleMap = forwardRef(({ center, zoom, width, height, segments }, ref) => {
+const GoogleMap = forwardRef(({ center, zoom, width, height, segments, bearing }, ref) => {
   const mapRef = useRef(null);
   const mapInstance = useRef(null);
   const [scriptLoaded, setScriptLoaded] = useState(false);
   const [isUserDragging, setIsUserDragging] = useState(false);
   const polylinesRef = useRef([]);
 
-  // useEffect(() => {
-  //   if (!mapInstance.current || !segments) return;
   
-  //   // remove old polylines
-  //   polylinesRef.current.forEach(p => p.setMap(null));
-  //   polylinesRef.current = [];
-
-  //   segments.forEach(seg => {
-  //     if (!seg) return; // skip if seg is undefined or null
-  //     // seg is an array of { latitude, longitude }
-  //     const path = seg.map(p => ({ lat: p.latitude, lng: p.longitude }));
-    
-  //     const polyline = new google.maps.Polyline({
-  //       path,
-  //       map: mapInstance.current,
-  //       strokeColor: "#ffffff",
-  //       strokeOpacity: 1.0,
-  //       strokeWeight: 15
-  //     });
-    
-  //     polylinesRef.current.push(polyline);
-  //   });
-    
-  
-  // }, [segments, scriptLoaded]);
   useEffect(() => {
     if (!mapInstance.current || !segments) return;
   
@@ -49,7 +25,7 @@ const GoogleMap = forwardRef(({ center, zoom, width, height, segments }, ref) =>
         const polyline = new google.maps.Polyline({
           path,
           map: mapInstance.current,
-          strokeColor: "#ffffff",
+          strokeColor: "#000000",
           strokeOpacity: 1.0,
           strokeWeight: 15
         });
@@ -74,11 +50,23 @@ const GoogleMap = forwardRef(({ center, zoom, width, height, segments }, ref) =>
     const script = document.createElement("script");
     script.id = "google-maps-script";
     script.src = `https://maps.googleapis.com/maps/api/js?key=${import.meta.env.VITE_GOOGLE_MAPS_API_KEY}`;
+    // script.src = `https://maps.googleapis.com/maps/api/js?key=${import.meta.env.VITE_GOOGLE_MAPS_API_KEY}&v=beta&map_ids=${Constants.mapId}`;
+
     script.async = true;
     script.defer = true;
     script.onload = () => setScriptLoaded(true);
     document.head.appendChild(script);
   }, []);
+
+  useEffect(() => {
+    if (!mapInstance.current) return;
+  
+    // rotate map to match bearing
+    if (bearing != null) {
+      console.log(`Setting map heading to ${bearing}`);
+      mapInstance.current.setHeading(bearing);
+    }
+  }, [bearing]);
 
   // Initialize map
   useEffect(() => {
@@ -89,6 +77,7 @@ const GoogleMap = forwardRef(({ center, zoom, width, height, segments }, ref) =>
         center,
         zoom,
         mapTypeId: "roadmap",
+        mapId: Constants.MAP_ID,
         styles: Constants.mapStyles,
         zoomControl: false,
         mapTypeControl: false,
@@ -98,8 +87,10 @@ const GoogleMap = forwardRef(({ center, zoom, width, height, segments }, ref) =>
         rotateControl: false,
         clickableIcons: false,
         draggable: true,
-        gestureHandling: "greedy"
+        gestureHandling: "greedy",
       });
+
+      mapInstance.current.setTilt(35)
 
       // Track dragging
       mapInstance.current.addListener("dragstart", () => setIsUserDragging(true));
@@ -111,7 +102,7 @@ const GoogleMap = forwardRef(({ center, zoom, width, height, segments }, ref) =>
         title: "My Location",
         icon: {
           path: google.maps.SymbolPath.CIRCLE,
-          fillColor: "#000000",       // black fill
+          fillColor: "#ffffff",       // black fill
           fillOpacity: 1,
           strokeColor: "#00ff00",     // green stroke
           strokeWeight: 3,            // thickness of stroke

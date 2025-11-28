@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import io from 'socket.io-client';
 import './App.css';
 import GoogleMap from './GoogleMap';
+import GreenMonochromeFilter from './GreenMonochromeFilter';
 
 
 const API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY
@@ -38,6 +39,7 @@ function App() {
   const [routeSegments, setRouteSegments] = useState([]);
   const [timeLeft, setTimeLeft] = useState(null);
   const [distanceLeft, setDistanceLeft] = useState(null);
+  const [currentBearing, setCurrentBearing] = useState(0);
 
   useEffect(() => {
     socket.on('connect', () => {
@@ -68,9 +70,11 @@ function App() {
     socket.on('web_location_update', (data) => {
       const lat = data.lat;
       const lon = data.long;
+      const bearing = data.bearing;
       setLatLong([lat, lon]);
       if (dragCenterLatLong === null) {
         setDragCenterLatLong([lat, lon]);
+        setCurrentBearing(bearing);
       }
     });
 
@@ -94,17 +98,28 @@ function App() {
       >
         <h2>Time Left: { formatTimeLeft(timeLeft) }s</h2>
         <h2>Distance Left: { formatDistanceLeft(distanceLeft) }m</h2>
-        <GoogleMap
-          ref={mapRef}
-          center={{
-            lat: curLatLong[0],
-            lng: curLatLong[1],
-          }}
-          zoom={18}
-          width={600}
-          height={600}
-          segments={routeSegments}   // <-----
-        />
+        <GreenMonochromeFilter
+          initialBrightness={.9}
+          initialContrast={1.1}
+          initialGrayscale={1}
+          initialHue={90}
+          initialInvert={1}
+          initialSaturate={20}
+          initialSepia={1}
+        >
+          <GoogleMap
+            ref={mapRef}
+            center={{
+              lat: curLatLong[0],
+              lng: curLatLong[1],
+            }}
+            zoom={18}
+            width={600}
+            height={600}
+            bearing={currentBearing}
+            segments={routeSegments}   // <-----
+          />
+        </GreenMonochromeFilter>
         <button onClick={() => mapRef.current.recenter()}>
           Recenter Map
         </button>
