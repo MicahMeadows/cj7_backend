@@ -8,6 +8,26 @@ const API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY
 // Connect to your Socket.IO server
 const socket = io('http://127.0.0.1:8089');
 
+function formatTimeLeft(seconds) {
+  if (!seconds || seconds < 0) return "0 min";
+
+  const hours = Math.floor(seconds / 3600);
+  const minutes = Math.floor((seconds % 3600) / 60);
+
+  if (hours > 0) {
+    return `${hours} hour${hours !== 1 ? "s" : ""} ${minutes} min`;
+  }
+
+  return `${minutes} min`;
+}
+
+function formatDistanceLeft(meters) {
+  if (!meters || meters < 0) return "0 miles";
+
+  const miles = meters / 1609.34;
+  return `${miles.toFixed(1)} miles`;
+}
+
 function App() {
   const [message, setMessage] = useState('Test World');
   const [imageData, setImageData] = useState(null);
@@ -72,6 +92,8 @@ function App() {
           socket.emit('skip_song');
         }}
       >
+        <h2>Time Left: { formatTimeLeft(timeLeft) }s</h2>
+        <h2>Distance Left: { formatDistanceLeft(distanceLeft) }m</h2>
         <GoogleMap
           ref={mapRef}
           center={{
