@@ -4,6 +4,7 @@ import './App.css';
 import GoogleMap from './GoogleMap';
 import GreenMonochromeFilter from './GreenMonochromeFilter';
 import Constants from './const';
+import SpeedBar from './SpeedBar.jsx';
 
 
 const API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY
@@ -97,68 +98,174 @@ function App() {
   }, []);
 
   return (
-    <div className="App">
+    <div className="App" >
       <div
-        onClick={() => {
-          console.log('skip');
-          socket.emit('skip_song');
+        style={{
+          aspectRatio: "16 / 9",
+          width: "100vw",
+          backgroundColor: "black",
+          overflow: "hidden",
+          padding: "20px",
         }}
       >
-        <h2>Speed: { currentSpeed }mph</h2>
-        <h2>Tot Time Left: { formatTimeLeft(timeLeft) }</h2>
-        <h2>Tot Distance Left: { formatDistanceLeft(distanceLeft) }</h2>
-        {
-          turnByTurn && (
-            <div>
-              <h2>road: { turnByTurn.road }</h2>
-              <h2>maneuver: { Constants.getManeuverName(turnByTurn.maneuver) }</h2>
-              <h2>meters: { turnByTurn.meters } meters</h2>
-              <h2>seconds: { turnByTurn.seconds } seconds</h2>
-              <h2>side: { turnByTurn.side }</h2>
-              <h2>step: { turnByTurn.step }</h2>
-            </div>
-          )
-        }
-        <GreenMonochromeFilter
-          initialBrightness={.9}
-          initialContrast={1.1}
-          initialGrayscale={1}
-          initialHue={90}
-          initialInvert={1}
-          initialSaturate={20}
-          initialSepia={1}
+        <div
+          style={{
+            display: 'flex',
+            flexDirection: 'column',
+            height: "100%",
+          }}
+          onClick={() => {
+            console.log('skip');
+            socket.emit('skip_song');
+          }}
         >
-          <GoogleMap
-            ref={mapRef}
-            center={{
-              lat: curLatLong[0],
-              lng: curLatLong[1],
-            }}
-            zoom={18}
-            width={600}
-            height={600}
-            bearing={currentBearing}
-            segments={routeSegments}   // <-----
-          />
-        </GreenMonochromeFilter>
-        <button onClick={() => mapRef.current.recenter()}>
-          Recenter Map
-        </button>
+          <div
+            style={{
+              display: 'flex',
+              flexDirection: 'row',
+              justifyContent: 'space-between',
+              padding: "5px 0",
+            }}>
+              <p>1985 Jeep CJ7</p>
+              <p>09/21/2025 - 10:45PM</p>
+          </div>
+          <hr style={{ width: "100%", borderTop: "3px solid #ccc", padding: "5px" }} />
+          <div style={{
+            display: 'flex',
+            flexDirection: 'row',
+            justifyContent: 'space-between',
+            // padding: "20px 0",           // optional if you want spacing inside
+            flexGrow: 1,       // let it grow to remaining space
+          }}>
+            <div style={{
+              width: "14%",
+              border: "3px solid #fff",
+              boxSizing: "border-box",
+              margin: "0",
+            }}>
+              <div style={{
+                display: "flex",
+                flexDirection: "column",
+                height: "100%",
+              }}>
+                <div style={{
+                  flexGrow: 1,
+                  padding: "10px 0px",
+                }}>
+                  <SpeedBar value={60} color='white'></SpeedBar>
+                </div>
+                <hr style={{ width: "100%", borderTop: "3px solid #ccc", padding: "0"}} />
+                <div>
+                  <div style={{
+                    display: "flex",
+                    flexDirection: "row",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    justifyItems: "center",
+                    alignContent: "center",
+                    padding: "0px 15px",
+                  }}>
+                    {/* Left spacer */}
+                    <div style={{ flex: 1 }}></div>
 
-        {isConnected && <h3> SocketIO Connected </h3>}
-        {!isConnected && <h3> SocketIO Disconnected </h3>}
-        <h3>NEXT</h3>
-      </div>
-      {imageData && (
-        <div style={{ textAlign: 'center', marginTop: '20px' }}>
-          <img
-            src={`data:image/jpeg;base64,${imageData}`}
-            alt="Album Art"
-            style={{ maxWidth: '300px', borderRadius: '10px' }}
-          />
+                    {/* Center number */}
+                    <div>
+                      <span style={{ fontSize: '5rem' }}>62</span>
+                    </div>
+
+                    <div style={{ flex: 1 }}></div>
+
+                    {/* Right MPH */}
+                    <div style={{ flex: 1, display: "flex", justifyContent: "flex-end" }}>
+                      <span style={{ display: 'inline-block', lineHeight: '0.9', fontSize: '1.4rem', paddingTop: '8px' }}>
+                        <span>M</span><br />
+                        <span>P</span><br />
+                        <span>H</span>
+                      </span>
+                    </div>
+                  </div>
+                </div>
+                
+
+              </div>
+            </div>
+
+            <div style={{
+              width: "54%",
+              border: "3px solid #fff",
+              boxSizing: "border-box",
+              margin: "0",
+            }}>
+              Middle panel content
+            </div>
+
+            <div style={{
+              width: "30%",
+              border: "3px solid #fff",
+              boxSizing: "border-box",
+              margin: "0",
+            }}>
+              Right panel content
+            </div>
+          
+
+          </div>
+          {/* <h2>Speed: { currentSpeed }mph</h2>
+          <h2>Tot Time Left: { formatTimeLeft(timeLeft) }</h2>
+          <h2>Tot Distance Left: { formatDistanceLeft(distanceLeft) }</h2> */}
+          {/* {
+            turnByTurn && (
+              <div>
+                <h2>road: { turnByTurn.road }</h2>
+                <h2>maneuver: { Constants.getManeuverName(turnByTurn.maneuver) }</h2>
+                <h2>meters: { turnByTurn.meters } meters</h2>
+                <h2>seconds: { turnByTurn.seconds } seconds</h2>
+                <h2>side: { turnByTurn.side }</h2>
+                <h2>step: { turnByTurn.step }</h2>
+              </div>
+            )
+          } */}
+          {/* <GreenMonochromeFilter
+            initialBrightness={.9}
+            initialContrast={1.1}
+            initialGrayscale={1}
+            initialHue={90}
+            initialInvert={1}
+            initialSaturate={20}
+            initialSepia={1}
+          >
+            <GoogleMap
+              ref={mapRef}
+              center={{
+                lat: curLatLong[0],
+                lng: curLatLong[1],
+              }}
+              zoom={18}
+              width={600}
+              height={600}
+              bearing={currentBearing}
+              segments={routeSegments}   // <-----
+            />
+          </GreenMonochromeFilter> */}
+          {/* <button onClick={() => mapRef.current.recenter()}>
+            Recenter Map
+          </button> */}
+
+          {/* {isConnected && <h3> SocketIO Connected </h3>}
+          {!isConnected && <h3> SocketIO Disconnected </h3>}
+          <h3>NEXT</h3> */}
         </div>
-      )}
-      <h1 style={{ textAlign: 'center', marginTop: '50px' }}>{message}</h1>
+        {/* {imageData && (
+          <div style={{ textAlign: 'center', marginTop: '20px' }}>
+            <img
+              src={`data:image/jpeg;base64,${imageData}`}
+              alt="Album Art"
+              style={{ maxWidth: '300px', borderRadius: '10px' }}
+            />
+          </div>
+        )} */}
+        {/* <h1 style={{ textAlign: 'center', marginTop: '50px' }}>{message}</h1> */}
+      </div>
     </div>
   );
 }

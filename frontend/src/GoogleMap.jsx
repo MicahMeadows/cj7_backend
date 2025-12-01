@@ -7,24 +7,20 @@ const GoogleMap = forwardRef(({ center, zoom, width, height, segments, bearing }
   const [scriptLoaded, setScriptLoaded] = useState(false);
   const [isUserDragging, setIsUserDragging] = useState(false);
   const polylinesRef = useRef([]);
-  const markerPositionRef = useRef(center);
 
-  // Update marker and map center immediately when center changes
+  // Instantly update map & marker when center changes
   useEffect(() => {
     if (!mapInstance.current || !mapInstance.current.userMarker) return;
 
-    const marker = mapInstance.current.userMarker;
+    // Update marker always
+    mapInstance.current.userMarker.setPosition(center);
 
-    // Update marker
-    markerPositionRef.current = center;
-    marker.setPosition(center);
-
-    // Update map center only if user isn't dragging
+    // Update map only if not dragging
     if (!isUserDragging) {
       mapInstance.current.setCenter(center);
       mapInstance.current.setZoom(zoom);
     }
-  }, [center, zoom, isUserDragging]);
+  }, [center.lat, center.lng, zoom, isUserDragging]);
 
   // Handle route segments
   useEffect(() => {
@@ -34,7 +30,6 @@ const GoogleMap = forwardRef(({ center, zoom, width, height, segments, bearing }
       if (!seg) return;
 
       const path = seg.map(p => ({ lat: p.latitude, lng: p.longitude }));
-
       if (polylinesRef.current[i]) {
         polylinesRef.current[i].setPath(path);
       } else {
@@ -102,7 +97,7 @@ const GoogleMap = forwardRef(({ center, zoom, width, height, segments, bearing }
 
       mapInstance.current.setTilt(35);
 
-      // Track dragging
+      // Track dragging state
       mapInstance.current.addListener("dragstart", () => setIsUserDragging(true));
       mapInstance.current.addListener("dragend", () => setIsUserDragging(false));
 
@@ -120,8 +115,6 @@ const GoogleMap = forwardRef(({ center, zoom, width, height, segments, bearing }
           scale: 15
         }
       });
-
-      markerPositionRef.current = center;
     }
   }, [scriptLoaded]);
 
