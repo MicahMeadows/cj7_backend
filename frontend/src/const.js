@@ -6,6 +6,8 @@ export default class Constants {
     static TILE_ZOOM = .5;
     static RENDER_DEBUG_CANVAS = true;
 
+    static RETRO_GREEN = "#41ff00"
+
     static getManeuverName(value) {
         const key = Object.entries(this.MANEUVER).find(([k, v]) => v === value)?.[0] || "UNKNOWN";
         

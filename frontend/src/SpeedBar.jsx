@@ -3,31 +3,35 @@ import React from "react";
 const SpeedBar = ({ value, width = "100%", height = "100%", color = "white" }) => {
   const clampedValue = Math.max(0, Math.min(60, value));
   const totalRects = 12; // 60 / 5
-  const rectHeight = parseFloat(height) / totalRects; // height per rectangle
+  const minHeight = 4;  // smallest rectangle (%)
+  const maxHeight = 16; // largest rectangle (%), increased for bigger steps
 
-  // How many rectangles should be filled
   const filledRects = Math.floor(clampedValue / 5);
 
   const rects = Array.from({ length: totalRects }, (_, i) => {
     const isFilled = i < filledRects;
+
+    // exponential step for bigger height difference
+    const rectFraction = (i + 1) / totalRects;
+    const rectHeight = minHeight + Math.pow(rectFraction, 2) * (maxHeight - minHeight);
+
     return (
+      <div
+        key={i}
+        style={{
+          padding: "2px 0",
+          width: "100%",
+          height: `${rectHeight}%`,
+        }}
+      >
         <div
-            key={i}
-            style={{
-                padding: "2px 10px",
-                width: "100%",
-                height: `${100 / totalRects}%`, // each rectangle takes equal fraction
-            }}
-        >
-            <div style={{
-                backgroundColor: isFilled ? color : "transparent",
-                height: "100%",
-                width: "100%",
-            }}>
-
-            </div>
-
-        </div>
+          style={{
+            backgroundColor: isFilled ? color : "transparent",
+            width: "100%",
+            height: "100%",
+          }}
+        />
+      </div>
     );
   });
 
@@ -35,9 +39,9 @@ const SpeedBar = ({ value, width = "100%", height = "100%", color = "white" }) =
     <div
       style={{
         display: "flex",
-        flexDirection: "column-reverse", // fill bottom to top
+        flexDirection: "column-reverse",
         width,
-        height: "100%", // take full container height
+        height: "100%",
       }}
     >
       {rects}

@@ -1,28 +1,27 @@
 import { useEffect, useRef, useState, useImperativeHandle, forwardRef } from "react";
 import Constants from "./const";
 
-const GoogleMap = forwardRef(({ center, zoom, width, height, segments, bearing }, ref) => {
+// const GoogleMap = forwardRef(({ center, zoom, segments, bearing }, ref) => {
+  const GoogleMap = forwardRef(({ center, zoom, segments, bearing, style }, ref) => {
   const mapRef = useRef(null);
   const mapInstance = useRef(null);
   const [scriptLoaded, setScriptLoaded] = useState(false);
   const [isUserDragging, setIsUserDragging] = useState(false);
   const polylinesRef = useRef([]);
 
-  // Instantly update map & marker when center changes
+  // Update marker & recenter
   useEffect(() => {
     if (!mapInstance.current || !mapInstance.current.userMarker) return;
 
-    // Update marker always
     mapInstance.current.userMarker.setPosition(center);
 
-    // Update map only if not dragging
     if (!isUserDragging) {
       mapInstance.current.setCenter(center);
       mapInstance.current.setZoom(zoom);
     }
   }, [center.lat, center.lng, zoom, isUserDragging]);
 
-  // Handle route segments
+  // Draw route segments
   useEffect(() => {
     if (!mapInstance.current || !segments) return;
 
@@ -57,7 +56,6 @@ const GoogleMap = forwardRef(({ center, zoom, width, height, segments, bearing }
       return;
     }
     const script = document.createElement("script");
-    script.id = "google-maps-script";
     script.src = `https://maps.googleapis.com/maps/api/js?key=${import.meta.env.VITE_GOOGLE_MAPS_API_KEY}`;
     script.async = true;
     script.defer = true;
@@ -65,7 +63,7 @@ const GoogleMap = forwardRef(({ center, zoom, width, height, segments, bearing }
     document.head.appendChild(script);
   }, []);
 
-  // Rotate map to match bearing
+  // Rotate map
   useEffect(() => {
     if (!mapInstance.current) return;
     if (bearing != null) {
@@ -76,7 +74,6 @@ const GoogleMap = forwardRef(({ center, zoom, width, height, segments, bearing }
   // Initialize map
   useEffect(() => {
     if (!scriptLoaded || !mapRef.current) return;
-
     if (!mapInstance.current) {
       mapInstance.current = new google.maps.Map(mapRef.current, {
         center,
@@ -118,7 +115,7 @@ const GoogleMap = forwardRef(({ center, zoom, width, height, segments, bearing }
     }
   }, [scriptLoaded]);
 
-  // Expose recenter method
+  // Expose recenter
   useImperativeHandle(ref, () => ({
     recenter: () => {
       if (mapInstance.current) {
@@ -128,7 +125,17 @@ const GoogleMap = forwardRef(({ center, zoom, width, height, segments, bearing }
     }
   }));
 
-  return <div ref={mapRef} style={{ width, height }} />;
+  // Render map with static parent-measured size
+  return (
+    <div
+      ref={mapRef}
+      style={{
+        width: "100%",
+        height: "100%",
+        ...style, // merge any external style
+      }}
+    />
+  );
 });
 
 export default GoogleMap;

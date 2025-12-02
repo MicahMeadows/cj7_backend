@@ -80,7 +80,8 @@ def run_socketio_server():
     @socketio.on('song_change')
     def handle_song_change(data):
         print(f'Song changed to: {data}')
-        socketio.emit('update_text', {'data': f'song playing now: {data}'})
+        # socketio.emit('update_text', {'data': f'song playing now: {data}'})
+        socketio.emit('web_song_change', data)
 
     @socketio.on('album_image')
     def handle_album_image(data):
