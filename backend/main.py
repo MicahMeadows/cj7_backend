@@ -39,6 +39,8 @@ def run_socketio_server():
     app = create_flask_app()
     socketio = SocketIO(app, cors_allowed_origins="*")  # Allow CORS for all origins
 
+    android_sid = None
+
     tile_cache = {}
     pending_tile_requests = set()
 
@@ -50,18 +52,38 @@ def run_socketio_server():
 
     @socketio.on('disconnect')
     def handle_disconnect():
-        print('Client disconnected')
-
+        sid = request.sid
+        print(f'Client disconnected: {sid}')
+        nonlocal android_sid
+        if sid == android_sid:
+            android_sid = None
+            print('Android device disconnected')
+            socketio.emit('web_android_disconnected', {})
+    
+    @socketio.on('volume_change')
+    def handle_volume_change(data):
+        print(f'Received volume change: {data}')
+        socketio.emit('web_volume_change', data)
+    
     @socketio.on('reload_page')
     def handle_reload_page():
         print('Reload page requested')
         socketio.emit('android_reload_page', {})
 
+        nonlocal android_sid
+        print(f'Current android_sid: {android_sid}')
+        if android_sid != None:
+            print(f'Sending android_web_connected to Android device {android_sid}')
+            socketio.emit('web_android_connected', {})
+
     @socketio.on('android_connect')
     def android_device_connected():
-        print('Android device connected')
-        socketio.emit('update_text', {'data': f'Android device connected: {request.sid}'})
-
+        sid = request.sid
+        nonlocal android_sid
+        android_sid = sid
+        print(f'Android device connected: {sid}')
+        socketio.emit('web_android_connected', {})
+    
     @socketio.on('time_and_distance')
     def handle_time_and_distance(data):
         print('Received time and distance data')
@@ -71,6 +93,11 @@ def run_socketio_server():
     def handle_route_segments(data):
         print('Received route segments data')
         socketio.emit('web_route_segments', data)
+    
+    @socketio.on('battery_level')
+    def handle_battery_level(data):
+        print(f'Received battery level: {data}%')
+        socketio.emit('web_battery_level', data)
 
     @socketio.on('turn_by_turn')
     def handle_turn_by_turn(data):

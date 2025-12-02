@@ -3,6 +3,21 @@ html, body, #root, .App {
   margin: 0;
   padding: 0;
 }
+.wave-char {
+  display: inline-block;
+  position: relative;
+  animation: waveMove 5s ease-in-out infinite;
+}
+
+@keyframes waveMove {
+  0%   { transform: translateY(0); }
+  25%  { transform: translateY(-10px); }
+  50%  { transform: translateY(0); }
+  75%  { transform: translateY(10px); }
+  100% { transform: translateY(0); }
+}
+
+
 
 #root {
   /* max-width: 1280px; */

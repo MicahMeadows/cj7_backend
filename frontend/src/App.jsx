@@ -8,6 +8,8 @@ import SpeedBar from './SpeedBar.jsx';
 import { Textfit } from 'react-textfit';
 import ScrollingText from './ScrollingText.jsx';
 import TrackProgress from './TrackProgress.jsx';
+import CjArt from './CjArt.jsx';
+import VolumeBar from './VolumeBar.jsx';
 
 const API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY
 // Connect to your Socket.IO server
@@ -39,10 +41,12 @@ function formatDistanceLeft(meters) {
 }
 
 function App() {
+  const [volume, setVolume] = useState(0);
+  const [androidConnected, setAndroidConnected] = useState(false);
+  const [batteryLevel, setBatteryLevel] = useState(0);
   const [songData, setSongData] = useState(null);
   const [imageData, setImageData] = useState(null);
   const [isConnected, setIsConnected] = useState(socket.connected);
-  const [btConnected, setBtConnected] = useState(false);
   const [curLatLong, setLatLong] = useState([38.051524, -84.442025]);
   const mapRef = useRef(null);
   const [routeSegments, setRouteSegments] = useState([]);
@@ -119,17 +123,54 @@ function App() {
     return () => clearInterval(intervalId);
   }, []);
 
+  function requestInitialData() {
+      socket.emit('reload_page');
+  }
+
+  function phoneDisconnected() {
+      setRouteSegments([]);
+      setTimeLeft(0);
+      setDistanceLeft(0);
+      setTurnByTurn(null);
+      setSongData(null);
+      setImageData(null);
+      setBatteryLevel(0);
+  }
+
 
   useEffect(() => {
     socket.on('connect', () => {
       setIsConnected(true);
       console.log(`requsting page reload`);
-      socket.emit('reload_page');
+      requestInitialData();
     });
 
 
     socket.on('disconnect', () => {
       setIsConnected(false);
+      phoneDisconnected();
+    });
+
+
+    socket.on('web_volume_change', (data) => {
+      console.log('Volume change data received:', data);
+      setVolume(data);
+    });
+
+    socket.on('web_android_connected', () => {
+      console.log('Android device connected');
+      setAndroidConnected(true);
+      requestInitialData();
+    });
+
+    socket.on('web_android_disconnected', () => {
+      console.log('Android device disconnected');
+      setAndroidConnected(false);
+      phoneDisconnected();
+    });
+
+    socket.on('web_battery_level', (data) => {
+      setBatteryLevel(data);
     });
 
     socket.on('web_end_route', () => {
@@ -494,6 +535,7 @@ function App() {
                   height: "45%",
                   marginBottom: "10px",
                 }}>
+                  { androidConnected && (
                   <div style={{
                     display: "flex",
                     flexDirection: "column",
@@ -504,7 +546,7 @@ function App() {
                     <div style={{
                       display: "flex",
                       flexDirection: "row",
-                      justifyContent: "start",
+                      justifyContent: "space-between",
                       textAlign: "left",
                     }}>
                       {imageData && (
@@ -559,8 +601,12 @@ function App() {
                       height: "30px"
                     }} />
                     <TrackProgress playerState={songData} bgColor={"black"} accentColor={Constants.RETRO_GREEN} />
+                    <div style={{
+                      height: '20px'
+                    }}/>
+                    <VolumeBar accentColor={Constants.RETRO_GREEN} bgColor='black' value={volume}/>
 
-                  </div>
+                  </div>)}
                 </div>
                 <div style={{
                   border: `3px solid ${Constants.RETRO_GREEN}`,
@@ -574,27 +620,7 @@ function App() {
                   alignItems: 'center',     // vertical centering
                   textAlign: 'center',     // center ASCII inside inner div
                 }}>
-                  <div style={{
-                    whiteSpace: "pre",
-                    fontFamily: "'Anonymous Pro', monospace",
-                    textAlign: 'left',
-                    lineHeight: "1.1",
-                    margin: "0",
-                    padding: "0",
-                    marginTop: "-15px",
-                    color: Constants.RETRO_GREEN,
-                    fontSize: "1.2rem",
-                    fontWeight: "bold",
-                  }}>
-                    {/* HACK: ascii art gross and ghetto but needs to be like this or img or something */}
-                    {`  ________        ___    _______  
- |\\   ____\\      |\\  \\  |\\____  \\
- \\ \\  \\___|      \\ \\  \\ \\|___/  /|
-  \\ \\  \\       __ \\ \\  \\    /  / /
-   \\ \\  \\____ |\\  \\\\_\\  \\  /  / / 
-    \\ \\_______\\ \\________\\/__/ /  
-     \\|_______|\\|________||__|/ `}
-                  </div>
+                <CjArt />
                 </div>
                 <div style={{
                   border: `3px solid ${Constants.RETRO_GREEN}`,
@@ -608,18 +634,17 @@ function App() {
                 }}>
                   <div style={{
                     color: Constants.RETRO_GREEN,
-                    fontSize: "2rem",
+                    fontSize: "1.8rem",
                     fontWeight: "bold",
                   }}>
-                    Socket ({isConnected ? 'yes' : 'no'})
+                    Phone ({ androidConnected ? 'yes' : 'no' })
                   </div>
                   <div style={{
                     color: Constants.RETRO_GREEN,
-                    fontSize: "2rem",
+                    fontSize: "1.8rem",
                     fontWeight: "bold",
                   }}>
-                    {/* Bluetooth ({ btConnected ? 'yes' : 'no'}) */}
-                    Bluetooth (...)
+                    Battery: {batteryLevel}%
                   </div>
                 </div>
               </div>
