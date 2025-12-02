@@ -1,33 +1,115 @@
 import { useEffect, useRef, useState, useImperativeHandle, forwardRef } from "react";
-import Constants from "./const";
 
-// const GoogleMap = forwardRef(({ center, zoom, segments, bearing }, ref) => {
-  const GoogleMap = forwardRef(({ center, zoom, segments, bearing, style }, ref) => {
+const Constants = {
+  MAP_ID: "YOUR_MAP_ID",
+  mapStyles: []
+};
+
+const GoogleMap = forwardRef(({ center, zoom, segments, bearing, style }, ref) => {
   const mapRef = useRef(null);
   const mapInstance = useRef(null);
   const [scriptLoaded, setScriptLoaded] = useState(false);
   const [isUserDragging, setIsUserDragging] = useState(false);
   const polylinesRef = useRef([]);
+  
+  // Animation state
+  const animationRef = useRef(null);
+  const currentPositionRef = useRef(null);
+  const targetPositionRef = useRef(null);
+  const lastUpdateTimeRef = useRef(Date.now());
 
-  // Update marker & recenter
+  // Smooth position animation
   useEffect(() => {
     if (!mapInstance.current || !mapInstance.current.userMarker) return;
-
-    mapInstance.current.userMarker.setPosition(center);
-
-    if (!isUserDragging) {
-      mapInstance.current.setCenter(center);
-      mapInstance.current.setZoom(zoom);
+    
+    const newTarget = { lat: center.lat, lng: center.lng };
+    
+    // Initialize current position on first update
+    if (!currentPositionRef.current) {
+      currentPositionRef.current = newTarget;
+      targetPositionRef.current = newTarget;
+      mapInstance.current.userMarker.setPosition(newTarget);
+      if (!isUserDragging) {
+        mapInstance.current.setCenter(newTarget);
+      }
+      return;
     }
-  }, [center.lat, center.lng, zoom, isUserDragging]);
+    
+    // Update target position
+    targetPositionRef.current = newTarget;
+    lastUpdateTimeRef.current = Date.now();
+    
+    // Cancel existing animation
+    if (animationRef.current) {
+      cancelAnimationFrame(animationRef.current);
+    }
+    
+    // Start animation loop
+    const animate = () => {
+      if (!currentPositionRef.current || !targetPositionRef.current) return;
+      
+      const current = currentPositionRef.current;
+      const target = targetPositionRef.current;
+      
+      // Calculate distance
+      const latDiff = target.lat - current.lat;
+      const lngDiff = target.lng - current.lng;
+      const distance = Math.sqrt(latDiff * latDiff + lngDiff * lngDiff);
+      
+      // If we're close enough, snap to target
+      if (distance < 0.0000001) {
+        currentPositionRef.current = target;
+        mapInstance.current.userMarker.setPosition(target);
+        if (!isUserDragging) {
+          mapInstance.current.setCenter(target);
+        }
+        return;
+      }
+      
+      // Adaptive speed based on distance
+      // Larger jumps = faster animation to catch up
+      const timeSinceUpdate = Date.now() - lastUpdateTimeRef.current;
+      const baseSpeed = 0.0025; // Base interpolation speed
+      const urgencyMultiplier = Math.min(timeSinceUpdate / 1000, 2); // Speed up if falling behind
+      const distanceMultiplier = Math.min(distance * 10000, 50); // Speed up for large jumps
+      const speed = Math.min(baseSpeed * (1 + urgencyMultiplier + distanceMultiplier), 0.95);
+      
+      // Interpolate position
+      const newLat = current.lat + latDiff * speed;
+      const newLng = current.lng + lngDiff * speed;
+      const newPosition = { lat: newLat, lng: newLng };
+      
+      currentPositionRef.current = newPosition;
+      mapInstance.current.userMarker.setPosition(newPosition);
+      
+      if (!isUserDragging) {
+        mapInstance.current.setCenter(newPosition);
+      }
+      
+      // Continue animation
+      animationRef.current = requestAnimationFrame(animate);
+    };
+    
+    animate();
+    
+    return () => {
+      if (animationRef.current) {
+        cancelAnimationFrame(animationRef.current);
+      }
+    };
+  }, [center.lat, center.lng, isUserDragging]);
+
+  // Update zoom
+  useEffect(() => {
+    if (!mapInstance.current || isUserDragging) return;
+    mapInstance.current.setZoom(zoom);
+  }, [zoom, isUserDragging]);
 
   // Draw route segments
   useEffect(() => {
     if (!mapInstance.current || !segments) return;
-
     segments.forEach((seg, i) => {
       if (!seg) return;
-
       const path = seg.map(p => ({ lat: p.latitude, lng: p.longitude }));
       if (polylinesRef.current[i]) {
         polylinesRef.current[i].setPath(path);
@@ -42,7 +124,6 @@ import Constants from "./const";
         polylinesRef.current[i] = polyline;
       }
     });
-
     if (polylinesRef.current.length > segments.length) {
       polylinesRef.current.slice(segments.length).forEach(p => p.setMap(null));
       polylinesRef.current.length = segments.length;
@@ -91,13 +172,12 @@ import Constants from "./const";
         draggable: true,
         gestureHandling: "greedy",
       });
-
       mapInstance.current.setTilt(35);
-
+      
       // Track dragging state
       mapInstance.current.addListener("dragstart", () => setIsUserDragging(true));
       mapInstance.current.addListener("dragend", () => setIsUserDragging(false));
-
+      
       // Add marker
       mapInstance.current.userMarker = new google.maps.Marker({
         position: center,
@@ -118,21 +198,21 @@ import Constants from "./const";
   // Expose recenter
   useImperativeHandle(ref, () => ({
     recenter: () => {
-      if (mapInstance.current) {
-        mapInstance.current.setCenter(center);
+      if (mapInstance.current && targetPositionRef.current) {
+        mapInstance.current.setCenter(targetPositionRef.current);
+        currentPositionRef.current = targetPositionRef.current;
         setIsUserDragging(false);
       }
     }
   }));
 
-  // Render map with static parent-measured size
   return (
     <div
       ref={mapRef}
       style={{
         width: "100%",
         height: "100%",
-        ...style, // merge any external style
+        ...style,
       }}
     />
   );
