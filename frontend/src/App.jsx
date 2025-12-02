@@ -619,6 +619,7 @@ function App() {
                     fontWeight: "bold",
                   }}>
                     {/* Bluetooth ({ btConnected ? 'yes' : 'no'}) */}
+                    Bluetooth (...)
                   </div>
                 </div>
               </div>
