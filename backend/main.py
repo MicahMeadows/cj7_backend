@@ -82,6 +82,11 @@ def run_socketio_server():
         print(f'Song changed to: {data}')
         # socketio.emit('update_text', {'data': f'song playing now: {data}'})
         socketio.emit('web_song_change', data)
+    
+    @socketio.on('end_route')
+    def handle_end_route(data):
+        print('Route ended')
+        socketio.emit('web_end_route')
 
     @socketio.on('album_image')
     def handle_album_image(data):

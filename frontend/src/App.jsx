@@ -132,6 +132,13 @@ function App() {
       setIsConnected(false);
     });
 
+    socket.on('web_end_route', () => {
+      setRouteSegments([]);
+      setTimeLeft(0);
+      setDistanceLeft(0);
+      setTurnByTurn(null);
+    });
+
     socket.on('web_song_change', (data) => {
       console.log('Song change data received:', data);
       setSongData(data)
