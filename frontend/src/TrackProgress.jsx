@@ -40,7 +40,7 @@ export default function TrackProgress({ playerState, bgColor, accentColor}) {
       <div
         style={{
           position: "relative",
-          height: "48px",
+          height: "40px",
           border: `3px solid ${accentColor}`,
           background: bgColor,
           overflow: "hidden",

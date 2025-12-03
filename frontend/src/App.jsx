@@ -42,7 +42,7 @@ function formatDistanceLeft(meters) {
 
 function App() {
   const [volume, setVolume] = useState(0);
-  const [androidConnected, setAndroidConnected] = useState(false);
+  const [androidConnected, setAndroidConnected] = useState(null);
   const [batteryLevel, setBatteryLevel] = useState(0);
   const [songData, setSongData] = useState(null);
   const [imageData, setImageData] = useState(null);
@@ -124,17 +124,21 @@ function App() {
   }, []);
 
   function requestInitialData() {
+    if (androidConnected == null) {
       socket.emit('reload_page');
+    }
   }
 
   function phoneDisconnected() {
-      setRouteSegments([]);
-      setTimeLeft(0);
-      setDistanceLeft(0);
-      setTurnByTurn(null);
-      setSongData(null);
-      setImageData(null);
-      setBatteryLevel(0);
+    setRouteSegments([]);
+    setTimeLeft(0);
+    setDistanceLeft(0);
+    setTurnByTurn(null);
+    setSongData(null);
+    setImageData(null);
+    setBatteryLevel(0);
+    setCurrentSpeed(0);
+    setCurrentBearing(0);
   }
 
 
@@ -142,7 +146,7 @@ function App() {
     socket.on('connect', () => {
       setIsConnected(true);
       console.log(`requsting page reload`);
-      requestInitialData();
+      socket.emit('check_android_connected')
     });
 
 
@@ -157,16 +161,22 @@ function App() {
       setVolume(data);
     });
 
-    socket.on('web_android_connected', () => {
-      console.log('Android device connected');
-      setAndroidConnected(true);
-      requestInitialData();
+    socket.on('web_android_connected', (sid) => {
+      console.log(`Connecting andorid with sid: ${sid} - cur: ${androidConnected}`);
+      let oldSid = androidConnected;
+      setAndroidConnected(sid)
+      if (sid !== oldSid) {
+        requestInitialData();
+      }
     });
 
-    socket.on('web_android_disconnected', () => {
-      console.log('Android device disconnected');
-      setAndroidConnected(false);
+    socket.on('web_android_disconnected', (sid) => {
+      console.log(`Disconnecting andorid with sid: ${sid} - cur: ${androidConnected}`);
+      // if (androidConnected == sid) {
+      //   console.log(`disconn:  - cur: ${androidConnected} - old: ${sid}`);
+      setAndroidConnected(null);
       phoneDisconnected();
+      // }
     });
 
     socket.on('web_battery_level', (data) => {
@@ -276,7 +286,8 @@ function App() {
             display: 'flex',
             flexDirection: 'row',
             justifyContent: 'space-between',
-            flexGrow: 1,       // let it grow to remaining space
+            width: "100%",
+            height: "100%",
           }}>
             <div style={{
               width: "12%",
@@ -360,182 +371,180 @@ function App() {
                 />
               </GreenMonochromeFilter>
               {turnByTurn && (
+                <div
+                  style={{
+                    position: "relative",
+                    left: 0,
+                    right: 0,
+                    borderTop: `3px solid ${Constants.RETRO_GREEN}`, // <-- top border only
+                  }}
+                >
                   <div
                     style={{
-                      position: "relative",
-                      left: 0,
-                      right: 0,
-                      borderTop: `3px solid ${Constants.RETRO_GREEN}`, // <-- top border only
+                      display: "flex",
+                      flexDirection: "row",
+                      width: "100%",
+                      height: "90px",          // give parent a height
+                      boxSizing: "border-box",  // include borders/padding in height
                     }}
                   >
                     <div
                       style={{
+                        width: "20%",
+                        height: "100%",          // match parent height
+                        boxSizing: "border-box",
+                        borderRight: `3px solid ${Constants.RETRO_GREEN}`, // right-side border
+                      }}
+                    >
+                      <div style={{
                         display: "flex",
                         flexDirection: "row",
                         width: "100%",
-                        height: "90px",          // give parent a height
-                        boxSizing: "border-box",  // include borders/padding in height
-                      }}
-                    >
-                      <div
-                        style={{
-                          width: "20%",
-                          height: "100%",          // match parent height
-                          boxSizing: "border-box",
-                          borderRight: `3px solid ${Constants.RETRO_GREEN}`, // right-side border
-                        }}
-                      >
-                        <div style={{
-                          display: "flex",
-                          flexDirection: "row",
-                          width: "100%",
-                          height: "100%",
-                          alignItems: "space-between",
-                        }}>
-                          <div style={{ flex: 1, display: "flex", paddingLeft: "8px", alignContent: "center", alignItems: "center" }}>
-                            <span style={{ display: 'inline-block', lineHeight: '0.65', fontSize: '1.7rem', color: Constants.RETRO_GREEN }}>
-                              <span>S</span><br />
-                              <span>T</span><br />
-                              <span>E</span><br />
-                              <span>P</span>
-                            </span>
-                          </div>
-                          {turnByTurn && turnByTurn.meters && turnByTurn.seconds && (
-                            <div style={{
-                              display: "flex",
-                              flexDirection: "column",
-                              justifyContent: "center",
-                              textAlign: "right",
-                              fontSize: "2.1rem",
-                              lineHeight: "1",
-                              height: "100%",
-                              color: Constants.RETRO_GREEN,
-                              marginRight: "10px"
-                            }}>
-                              {formatDistanceLeft(turnByTurn.meters)}
-                              <br />
-                              {formatTimeLeft(turnByTurn.seconds)}
-                            </div>
-                          )}
+                        height: "100%",
+                        alignItems: "space-between",
+                      }}>
+                        <div style={{ flex: 1, display: "flex", paddingLeft: "8px", alignContent: "center", alignItems: "center" }}>
+                          <span style={{ display: 'inline-block', lineHeight: '0.65', fontSize: '1.7rem', color: Constants.RETRO_GREEN }}>
+                            <span>S</span><br />
+                            <span>T</span><br />
+                            <span>E</span><br />
+                            <span>P</span>
+                          </span>
                         </div>
-                      </div>
-                      <div
-                        style={{
-                          display: "flex",
-                          flexDirection: "column",
-                          alignContent: "center",
-                          alignItems: "center",
-                          justifyContent: "center",
-                          width: "60%",
-                          height: "100%",
-                          boxSizing: "border-box",
-                          borderRight: `3px solid ${Constants.RETRO_GREEN}`, // right-side border
-                        }}
-                      >
-                        <div style={{
-                          fontSize: "2rem",
-                          marginBottom: "2px",
-                          marginTop: "5px",
-                          lineHeight: "1.0",
-                          fontWeight: "bold",
-                          color: Constants.RETRO_GREEN,
-                          // }}>NEXT DIRECTION</div>
-                        }}> {
-                            turnByTurn && turnByTurn.maneuver && (
-                              Constants.getManeuverName(turnByTurn.maneuver).toUpperCase()
-                            )
-                          }</div>
-                        {turnByTurn && turnByTurn.road && (
-                          <Textfit mode="multi" max={40} style={{
-                            width: "90%",
-                            height: "80%",
-                            lineHeight: "1.0",
-                            color: Constants.RETRO_GREEN,
-                          }}>
-                            {turnByTurn.road}
-
-                          </Textfit>
-                        )}
-                      </div>
-                      <div
-                        style={{
-                          height: "100%",
-                          width: "20%",
-                          boxSizing: "border-box",
-                        }}
-                      >
-                        <div style={{
-                          display: "flex",
-                          flexDirection: "row",
-                          width: "100%",
-                          height: "100%",
-                          alignItems: "space-between",
-                        }}>
-                          <div style={{ flex: 1, display: "flex", paddingLeft: "8px", alignContent: "center", alignItems: "center" }}>
-                            <span style={{ display: 'inline-block', lineHeight: '0.65', fontSize: '1.7rem', color: Constants.RETRO_GREEN }}>
-                              <span>E</span><br />
-                              <span>T</span><br />
-                              <span>A</span>
-                            </span>
-                          </div>
+                        {turnByTurn && turnByTurn.meters && turnByTurn.seconds && (
                           <div style={{
                             display: "flex",
                             flexDirection: "column",
-                            alignItems: "flex-end",
                             justifyContent: "center",
-                            height: "100%",
-                            marginRight: "10px",
+                            textAlign: "right",
                             fontSize: "2.1rem",
                             lineHeight: "1",
                             height: "100%",
                             color: Constants.RETRO_GREEN,
+                            marginRight: "10px"
                           }}>
-                            {distanceLeft && (
+                            {formatDistanceLeft(turnByTurn.meters)}
+                            <br />
+                            {formatTimeLeft(turnByTurn.seconds)}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                    <div
+                      style={{
+                        display: "flex",
+                        flexDirection: "column",
+                        alignContent: "center",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        width: "60%",
+                        height: "100%",
+                        boxSizing: "border-box",
+                        borderRight: `3px solid ${Constants.RETRO_GREEN}`, // right-side border
+                      }}
+                    >
+                      <div style={{
+                        fontSize: "2rem",
+                        marginBottom: "2px",
+                        marginTop: "5px",
+                        lineHeight: "1.0",
+                        fontWeight: "bold",
+                        color: Constants.RETRO_GREEN,
+                        // }}>NEXT DIRECTION</div>
+                      }}> {
+                          turnByTurn && turnByTurn.maneuver && (
+                            Constants.getManeuverName(turnByTurn.maneuver).toUpperCase()
+                          )
+                        }</div>
+                      {turnByTurn && turnByTurn.road && (
+                        <Textfit mode="multi" max={40} style={{
+                          width: "90%",
+                          height: "80%",
+                          lineHeight: "1.0",
+                          color: Constants.RETRO_GREEN,
+                        }}>
+                          {turnByTurn.road}
+
+                        </Textfit>
+                      )}
+                    </div>
+                    <div
+                      style={{
+                        height: "100%",
+                        width: "20%",
+                        boxSizing: "border-box",
+                      }}
+                    >
+                      <div style={{
+                        display: "flex",
+                        flexDirection: "row",
+                        width: "100%",
+                        height: "100%",
+                        alignItems: "space-between",
+                      }}>
+                        <div style={{ flex: 1, display: "flex", paddingLeft: "8px", alignContent: "center", alignItems: "center" }}>
+                          <span style={{ display: 'inline-block', lineHeight: '0.65', fontSize: '1.7rem', color: Constants.RETRO_GREEN }}>
+                            <span>E</span><br />
+                            <span>T</span><br />
+                            <span>A</span>
+                          </span>
+                        </div>
+                        <div style={{
+                          display: "flex",
+                          flexDirection: "column",
+                          alignItems: "flex-end",
+                          justifyContent: "center",
+                          height: "100%",
+                          marginRight: "10px",
+                          fontSize: "2.1rem",
+                          lineHeight: "1",
+                          height: "100%",
+                          color: Constants.RETRO_GREEN,
+                        }}>
+                          {distanceLeft && (
+                            <div>
+                              {formatDistanceLeft(distanceLeft)}
+                            </div>
+                          )
+                          }
+                          {
+                            timeLeft && (
                               <div>
-                                {formatDistanceLeft(distanceLeft)}
+                                {/* {formatTimeLeft(timeLeft) } */}
+                                {getArrivalTime(timeLeft)}
+
                               </div>
                             )
-                            }
-                            {
-                              timeLeft && (
-                                <div>
-                                  {/* {formatTimeLeft(timeLeft) } */}
-                                  {getArrivalTime(timeLeft)}
-
-                                </div>
-                              )
-                            }
-                          </div>
-
+                          }
                         </div>
 
                       </div>
-                    </div>
 
+                    </div>
                   </div>
-                )}
-                
+
+                </div>
+              )}
+
             </div>
 
             <div style={{
-              width: "33%",
-              // border: `3px solid ${Constants.RETRO_GREEN}`,
+              display: "flex",
+              minWidth: 0,
+              flexShrink: 0,
+              flexDirection: "column",
+              height: "100%",
+              width: "32%",
               boxSizing: "border-box",
               margin: "0",
             }}>
               <div style={{
-                display: "flex",
-                flexDirection: "column",
-                height: "100%",
-                width: "100%",
+                border: `3px solid ${Constants.RETRO_GREEN}`,
+                boxSizing: "border-box",
+                height: "45%",
+                marginBottom: "10px",
               }}>
-                <div style={{
-                  border: `3px solid ${Constants.RETRO_GREEN}`,
-                  boxSizing: "border-box",
-                  height: "45%",
-                  marginBottom: "10px",
-                }}>
-                  { androidConnected && (
+                {androidConnected != null && (
                   <div style={{
                     display: "flex",
                     flexDirection: "column",
@@ -546,7 +555,7 @@ function App() {
                     <div style={{
                       display: "flex",
                       flexDirection: "row",
-                      justifyContent: "space-between",
+                      justifyContent: "start",
                       textAlign: "left",
                     }}>
                       {imageData && (
@@ -582,16 +591,16 @@ function App() {
                           display: "flex",
                           flexDirection: "column",
                           fontSize: "2rem",
-                          marginRight: "10px",
+                          // marginRight: "10px",
                           lineHeight: ".8",
                           height: "100%",
+                          width: "100%",
                           gap: "15px",
                           justifyContent: "space-between",
                           color: Constants.RETRO_GREEN,
                           overflow: "hidden",
                         }}>
-                          <ScrollingText >{songData.track.name}</ScrollingText>
-                          {/* <ScrollingText>{ "some long ass song name" }</ScrollingText> */}
+                          <ScrollingText>{songData.track.name}</ScrollingText>
                           <ScrollingText>{songData.track.album.name}</ScrollingText>
                           <ScrollingText>{songData.track.artist.name}</ScrollingText>
                         </div>
@@ -603,42 +612,43 @@ function App() {
                     <TrackProgress playerState={songData} bgColor={"black"} accentColor={Constants.RETRO_GREEN} />
                     <div style={{
                       height: '20px'
-                    }}/>
-                    <VolumeBar accentColor={Constants.RETRO_GREEN} bgColor='black' value={volume}/>
+                    }} />
+                    <VolumeBar accentColor={Constants.RETRO_GREEN} bgColor='black' value={volume} />
 
                   </div>)}
-                </div>
-                <div style={{
-                  border: `3px solid ${Constants.RETRO_GREEN}`,
-                  boxSizing: "border-box",
-                  height: "45%",
-                  marginBottom: "10px",
+              </div>
+              <div style={{
+                border: `3px solid ${Constants.RETRO_GREEN}`,
+                boxSizing: "border-box",
+                height: "45%",
+                marginBottom: "10px",
 
-                  /* Center content */
-                  display: 'flex',
-                  justifyContent: 'center', // horizontal centering
-                  alignItems: 'center',     // vertical centering
-                  textAlign: 'center',     // center ASCII inside inner div
-                }}>
+                /* Center content */
+                display: 'flex',
+                justifyContent: 'center', // horizontal centering
+                alignItems: 'center',     // vertical centering
+                textAlign: 'center',     // center ASCII inside inner div
+              }}>
                 <CjArt />
-                </div>
+              </div>
+              <div style={{
+                border: `3px solid ${Constants.RETRO_GREEN}`,
+                boxSizing: "border-box",
+                height: "10%",
+                display: "flex",
+                flexDirection: "row",
+                justifyContent: "space-between",
+                alignItems: "center",
+                padding: "0 20px",
+              }}>
                 <div style={{
-                  border: `3px solid ${Constants.RETRO_GREEN}`,
-                  boxSizing: "border-box",
-                  height: "10%",
-                  display: "flex",
-                  flexDirection: "row",
-                  justifyContent: "space-between",
-                  alignItems: "center",
-                  padding: "0 20px",
+                  color: Constants.RETRO_GREEN,
+                  fontSize: "1.8rem",
+                  fontWeight: "bold",
                 }}>
-                  <div style={{
-                    color: Constants.RETRO_GREEN,
-                    fontSize: "1.8rem",
-                    fontWeight: "bold",
-                  }}>
-                    Phone ({ androidConnected ? 'yes' : 'no' })
-                  </div>
+                  Phone ({androidConnected != null ? 'yes' : 'no'})
+                </div>
+                {androidConnected != null && (
                   <div style={{
                     color: Constants.RETRO_GREEN,
                     fontSize: "1.8rem",
@@ -646,7 +656,7 @@ function App() {
                   }}>
                     Battery: {batteryLevel}%
                   </div>
-                </div>
+                )}
               </div>
             </div>
           </div>

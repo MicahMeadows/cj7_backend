@@ -53,12 +53,18 @@ def run_socketio_server():
     @socketio.on('disconnect')
     def handle_disconnect():
         sid = request.sid
-        print(f'Client disconnected: {sid}')
         nonlocal android_sid
-        if sid == android_sid:
+        if android_sid == sid:
+            print(f'android disconnected: {sid}')
             android_sid = None
-            print('Android device disconnected')
-            socketio.emit('web_android_disconnected', {})
+
+        socketio.emit('web_android_disconnected', sid)
+    
+    @socketio.on('check_android_connected')
+    def handle_check_android_connected():
+        print(f'checking android connected for web client')
+        if android_sid is not None:
+            socketio.emit('web_android_connected', android_sid)
     
     @socketio.on('volume_change')
     def handle_volume_change(data):
@@ -70,19 +76,12 @@ def run_socketio_server():
         print('Reload page requested')
         socketio.emit('android_reload_page', {})
 
-        nonlocal android_sid
-        print(f'Current android_sid: {android_sid}')
-        if android_sid != None:
-            print(f'Sending android_web_connected to Android device {android_sid}')
-            socketio.emit('web_android_connected', {})
-
     @socketio.on('android_connect')
     def android_device_connected():
-        sid = request.sid
         nonlocal android_sid
+        sid = request.sid
         android_sid = sid
-        print(f'Android device connected: {sid}')
-        socketio.emit('web_android_connected', {})
+        socketio.emit('web_android_connected', sid)
     
     @socketio.on('time_and_distance')
     def handle_time_and_distance(data):

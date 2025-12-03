@@ -69,7 +69,7 @@ const GoogleMap = forwardRef(({ center, zoom, segments, bearing, style }, ref) =
       // Adaptive speed based on distance
       // Larger jumps = faster animation to catch up
       const timeSinceUpdate = Date.now() - lastUpdateTimeRef.current;
-      const baseSpeed = 0.0025; // Base interpolation speed
+      const baseSpeed = 0.003; // Base interpolation speed
       const urgencyMultiplier = Math.min(timeSinceUpdate / 1000, 2); // Speed up if falling behind
       const distanceMultiplier = Math.min(distance * 10000, 50); // Speed up for large jumps
       const speed = Math.min(baseSpeed * (1 + urgencyMultiplier + distanceMultiplier), 0.95);

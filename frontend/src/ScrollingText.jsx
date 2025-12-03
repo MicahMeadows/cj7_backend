@@ -37,9 +37,13 @@ function ScrollingText({ children, style, gap = 50, speed = 50 }) {
         overflow: "hidden",
         whiteSpace: "nowrap",
         position: "relative",
+        width: "100%",       // <-- LOCK WIDTH
+        display: "block",    // <-- prevents flex shrinking / expansion
         ...style,
       }}
     >
+
+
       {shouldScroll ? (
         <>
           <div
@@ -49,8 +53,8 @@ function ScrollingText({ children, style, gap = 50, speed = 50 }) {
               animation: `${animationId} ${duration}s linear infinite`,
             }}
           >
-            <span ref={textRef}>{children}</span>
-            <span>{children}</span>
+            <div ref={textRef}>{children}</div>
+            <div>{children}</div>
           </div>
           <style>{`
             @keyframes ${animationId} {
