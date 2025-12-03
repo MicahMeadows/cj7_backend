@@ -411,7 +411,7 @@ function App() {
                             <span>P</span>
                           </span>
                         </div>
-                        {turnByTurn && turnByTurn.meters && turnByTurn.seconds && (
+                        {turnByTurn && turnByTurn.meters != null && turnByTurn.seconds != null  && (
                           <div style={{
                             display: "flex",
                             flexDirection: "column",
